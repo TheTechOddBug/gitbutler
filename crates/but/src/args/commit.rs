@@ -18,6 +18,8 @@ use crate::args::atoms::CliIdArg;
 /// The commit is expected to have a commit message unless `--no-message` is provided. If neither of
 /// `--no-message` nor `--message` is provided, the user's preferred editor is opened to input a
 /// message.
+///
+/// For more details about CLI IDs, see `but help cli-ids`.
 #[derive(Debug, clap::Parser)]
 #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
 pub struct Platform {
@@ -39,8 +41,6 @@ pub struct Platform {
     /// If `BRANCH` is omitted, an unstacked branch with a generated name is created.
     ///
     /// Attempting to place a commit on a branch that exists but is not applied is an error.
-    ///
-    /// Takes a CLI ID, see `but help cli-ids` for details.
     #[clap(short, long, value_name = "BRANCH", group = "targeting")]
     pub branch: Option<Option<CliIdArg>>,
 
@@ -51,8 +51,6 @@ pub struct Platform {
     ///
     /// If `BRANCH_OR_COMMIT` is a branch, the new commit is placed on a new branch above the
     /// targeted branch.
-    ///
-    /// Takes a CLI ID, see `but help cli-ids` for details.
     #[clap(
         short = 'A',
         long,
@@ -69,8 +67,6 @@ pub struct Platform {
     /// If `BRANCH_OR_COMMIT` is a branch, the new commit is placed on a new branch below the
     /// targeted branch. Branches are treated as buckets, meaning that "below a branch" is treated
     /// as below the oldest ancestor on that branch.
-    ///
-    /// Takes a CLI ID, see `but help cli-ids` for details.
     #[clap(
         short = 'B',
         long,
@@ -90,8 +86,6 @@ pub struct Platform {
     /// One or more changes to commit.
     ///
     /// A change can either be a file or a hunk.
-    ///
-    /// Takes CLI IDs, see `but help cli-ids` for details.
     #[clap(group = "changes_to_commit")]
     pub changes: Vec<CliIdArg>,
 }

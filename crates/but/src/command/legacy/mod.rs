@@ -6,6 +6,7 @@ use bstr::ByteSlice;
 
 pub mod absorb;
 pub mod actions;
+pub mod amend;
 pub mod branch;
 pub mod clean;
 pub mod commit;

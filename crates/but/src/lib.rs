@@ -1470,34 +1470,9 @@ async fn match_subcommand(
             Ok(())
         }
         #[cfg(feature = "legacy")]
-        Subcommands::Amend {
-            target_or_source,
-            legacy_commit,
-            changes,
-        } => {
-            let (commit, files) = if changes.is_empty() {
-                let Some(commit) = legacy_commit.as_deref() else {
-                    return Err(bad_input(
-                        "Missing --changes <file-or-hunk>. Usage: but amend <commit> --changes <id>[,<id>]",
-                    )
-                    .into());
-                };
-                (commit, std::slice::from_ref(&target_or_source))
-            } else {
-                if let Some(extra) = legacy_commit.as_deref() {
-                    return Err(bad_input(format!(
-                        "Unexpected extra argument '{extra}'. Use comma-separated --changes values: but amend <commit> --changes <id>[,<id>]",
-                    ))
-                    .into());
-                }
-                if changes.iter().any(|change| change.trim().is_empty()) {
-                    return Err(bad_input(
-                        "Empty --changes value. Use comma-separated file or hunk IDs: but amend <commit> --changes <id>[,<id>]",
-                    )
-                    .into());
-                }
-                (target_or_source.as_str(), changes.as_slice())
-            };
+        Subcommands::Amend(amend_args) => {
+            use crate::utils::IntermediateChannel;
+
             let status_after = args.status_after;
             let mut ctx = setup::init_ctx(
                 &args,
@@ -1508,11 +1483,13 @@ async fn match_subcommand(
                 out,
             )?;
             out.begin_status_after(status_after);
-            let result = command::legacy::rub::handle_amend(&mut ctx, out, files, commit)
-                .context("Failed to amend.")
-                .emit_metrics(metrics_ctx);
-            run_status_after_if_ok(status_after, &result, &mut ctx, out);
-            result.show_root_cause_error_then_exit_without_destructors(output)
+
+            let outcome =
+                command::legacy::amend::amend(&mut ctx, IntermediateChannel::new(out), amend_args)
+                    .emit_metrics(metrics_ctx)?;
+            out.print_cli_output(outcome)?;
+            run_status_after_if_requested(status_after, &mut ctx, out);
+            Ok(())
         }
         #[cfg(feature = "legacy")]
         Subcommands::Land { branch, yes, no_ff } => {

@@ -204,18 +204,6 @@ pub fn parse_sources_with_disambiguation(
     parse_sources_with_disambiguation_scoped(ctx, id_map, source, out, SourceScope::Any)
 }
 
-/// Like [parse_sources_with_disambiguation], but selectors resolve only
-/// against uncommitted files and hunks. Use for arguments that must name
-/// uncommitted changes, such as `--changes`.
-pub(crate) fn parse_uncommitted_sources_with_disambiguation(
-    ctx: &mut Context,
-    id_map: &IdMap,
-    source: &str,
-    out: &mut OutputChannel,
-) -> anyhow::Result<Vec<CliId>> {
-    parse_sources_with_disambiguation_scoped(ctx, id_map, source, out, SourceScope::UncommittedOnly)
-}
-
 fn parse_sources_with_disambiguation_scoped(
     ctx: &mut Context,
     id_map: &IdMap,

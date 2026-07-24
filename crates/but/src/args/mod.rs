@@ -650,27 +650,9 @@ pub enum Subcommands {
     #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
     Uncommit(uncommit::Platform),
 
-    /// Amend one or more file changes into a specific commit and rebases any dependent commits.
-    ///
-    /// Use `but amend <commit> --changes <file-or-hunk>[,<file-or-hunk>...]`.
     #[cfg(feature = "legacy")]
-    #[clap(override_usage = "but amend [OPTIONS] <COMMIT> --changes <CHANGES>")]
     #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
-    Amend {
-        /// Commit ID to amend into.
-        ///
-        /// In the legacy two-positional form, this can be the source ID.
-        #[clap(value_name = "COMMIT")]
-        target_or_source: String,
-        /// Commit ID to amend into for the legacy two-positional form.
-        #[clap(value_name = "COMMIT", hide = true)]
-        legacy_commit: Option<String>,
-        /// Uncommitted file or hunk CLI IDs to amend into the commit.
-        ///
-        /// Can be specified multiple times or as comma-separated values.
-        #[clap(long = "changes", short = 'p', value_delimiter = ',')]
-        changes: Vec<String>,
-    },
+    Amend(amend::Platform),
 
     /// Commands for viewing and managing operation history.
     ///
@@ -1271,6 +1253,8 @@ pub enum Subcommands {
 
 pub mod agent;
 pub mod alias;
+#[cfg(feature = "legacy")]
+pub mod amend;
 #[cfg(feature = "legacy")]
 pub mod commit;
 pub mod config;

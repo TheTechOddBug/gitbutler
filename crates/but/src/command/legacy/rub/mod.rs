@@ -3,14 +3,10 @@ use bstr::BStr;
 use but_api::commit::types::{
     CommitCreateResult, CommitMoveResult, CommitSquashResult, MoveChangesResult, UncommitResult,
 };
-use but_core::{DiffSpec, DryRun, sync::RepoExclusive};
+use but_core::{DiffSpec, DryRun};
 use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
 use but_workspace::commit::squash_commits::MessageCombinationStrategy;
-use gitbutler_oplog::{
-    OplogExt,
-    entry::{OperationKind, SnapshotDetails},
-};
 use gix::refs::FullName;
 use nonempty::NonEmpty;
 
@@ -18,16 +14,11 @@ use crate::{
     CliId, IdMap,
     id::{
         CommitId, CommittedFileId, WorktreeHunk,
-        parser::{
-            IdResolutionError, parse_sources_with_disambiguation,
-            parse_uncommitted_sources_with_disambiguation, prompt_for_disambiguation,
-        },
+        parser::{parse_sources_with_disambiguation, prompt_for_disambiguation},
     },
     theme::{self, Paint},
     utils::{OutputChannel, diff_specs::DiffSpecBuilder},
 };
-
-mod amend;
 
 /// A description of a set of hunks.
 type Description = String;
@@ -690,123 +681,6 @@ fn ids(
     // Still ambiguous even after filtering by validity - prompt the user
     let selected_target = prompt_for_disambiguation(target, valid_targets, "the target", out)?;
     Ok((sources, selected_target))
-}
-
-fn create_snapshot_with_perm(
-    ctx: &mut Context,
-    operation: OperationKind,
-    perm: &mut RepoExclusive,
-) {
-    let _snapshot = ctx
-        .create_snapshot(SnapshotDetails::new(operation), perm)
-        .ok(); // Ignore errors for snapshot creation
-}
-
-/// Resolves a single entity string to a CliId with disambiguation support.
-///
-/// If the entity matches multiple IDs, this will prompt the user to disambiguate
-/// in interactive mode, or error in non-interactive mode.
-///
-/// # Arguments
-/// * `id_map` - The ID map to resolve against
-/// * `entity_str` - The string to resolve (e.g., "ab", "main")
-/// * `context` - Description for error messages (e.g., "commit", "branch")
-/// * `out` - Output channel for interactive prompts
-///
-/// # Returns
-/// The resolved CliId
-fn resolve_single_id(
-    ctx: &mut Context,
-    id_map: &IdMap,
-    entity_str: &str,
-    context: &str,
-    out: &mut OutputChannel,
-) -> anyhow::Result<CliId> {
-    let matches = id_map.parse_using_context(entity_str, ctx)?;
-
-    if matches.is_empty() {
-        return Err(IdResolutionError::new(format!(
-            "{context} '{entity_str}' not found. If you just performed a Git operation (squash, rebase, etc.), try running 'but status' to refresh the current state."
-        ))
-        .into());
-    }
-
-    if matches.len() == 1 {
-        return Ok(matches[0].clone());
-    }
-
-    // Multiple matches - use disambiguation
-    prompt_for_disambiguation(entity_str, matches, context, out)
-}
-
-/// Handler for `but amend <file>... <commit>` - runs `but rub <file> <commit>`
-/// semantics for one or more files/hunks.
-///
-/// Validates that sources are uncommitted files/hunks and target is a commit.
-pub(crate) fn handle_amend(
-    ctx: &mut Context,
-    out: &mut OutputChannel,
-    file_strs: &[String],
-    commit_str: &str,
-) -> anyhow::Result<()> {
-    let t = theme::get();
-    let mut guard = ctx.exclusive_worktree_access();
-    let id_map = IdMap::new_from_context(ctx, None, guard.read_permission())?;
-    let mut files = Vec::new();
-    for file_str in file_strs {
-        files.extend(parse_uncommitted_sources_with_disambiguation(
-            ctx, &id_map, file_str, out,
-        )?);
-    }
-    let commit = resolve_single_id(ctx, &id_map, commit_str, "Commit", out)?;
-
-    // Validate that all files are uncommitted
-    for file in &files {
-        match file {
-            CliId::UncommittedHunkOrFile(_) => {
-                // Valid type for amend
-            }
-            _ => {
-                bail!(
-                    "Cannot amend {} - it is {}. Only uncommitted files and hunks can be amended.",
-                    t.cli_id.paint(file.to_short_string()),
-                    t.attention.paint(file.kind_for_humans())
-                );
-            }
-        }
-    }
-
-    // Validate that commit is a commit
-    match &commit {
-        CliId::Commit { .. } => {
-            let Some(source_refs) = NonEmpty::from_vec(files.iter().collect()) else {
-                bail!("At least one file or hunk must be provided.");
-            };
-            let Some(RubOperation::UncommittedToCommit(operation)) =
-                route_operation(source_refs, &commit, MessageCombinationStrategy::KeepBoth)
-            else {
-                unreachable!("amend source and target were validated before execution");
-            };
-
-            create_snapshot_with_perm(ctx, OperationKind::AmendCommit, guard.write_permission());
-            amend::uncommitted_to_commit_with_perm(
-                ctx,
-                operation.hunk_assignments,
-                operation.description,
-                operation.oid,
-                out,
-                guard.write_permission(),
-            )?;
-        }
-        other => {
-            bail!(
-                "Cannot amend into {} - it is {}. Target must be a commit.",
-                t.cli_id.paint(other.to_short_string()),
-                t.attention.paint(other.kind_for_humans())
-            );
-        }
-    }
-    Ok(())
 }
 
 /// Computes diff specs for changes to `path` in `commit_oid` relative to its first parent.

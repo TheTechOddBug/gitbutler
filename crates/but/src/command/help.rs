@@ -391,7 +391,7 @@ Editing Commits:
   absorb       Amends changes into the appropriate commits where they belong
   reword       Edit the commit message of the specified commit
   uncommit     Uncommit changes from commits or committed files to the uncommi…
-  amend        Amend one or more file changes into a specific commit and rebas…
+  amend        Amend uncommitted changes into a commit or branch
 
 Operation History:
   oplog        Commands for viewing and managing operation history

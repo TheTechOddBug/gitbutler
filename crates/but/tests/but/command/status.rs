@@ -1156,7 +1156,7 @@ fn agent_status_explains_rewritten_commit_marker() {
 
     env.file("one.txt", "one amended\n");
     let target_commit = env.invoke_git("rev-parse --short refs/heads/A");
-    env.but(format!("amend {target_commit} --changes one.txt"))
+    env.but(format!("amend one.txt --target {target_commit}"))
         .assert()
         .success()
         .stderr_eq(snapbox::str![]);

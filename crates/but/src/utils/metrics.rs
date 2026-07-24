@@ -220,7 +220,7 @@ impl Subcommands {
             #[cfg(feature = "legacy")]
             Subcommands::Uncommit { .. } => Uncommit,
             #[cfg(feature = "legacy")]
-            Subcommands::Amend { .. } => Amend,
+            Subcommands::Amend(..) => Amend,
             #[cfg(feature = "legacy")]
             Subcommands::Squash(..) => Squash,
             #[cfg(feature = "legacy")]
@@ -260,9 +260,9 @@ impl Subcommands {
                 push_prop(&mut props, "sourceKind", "commitOrCommittedFile");
             }
             #[cfg(feature = "legacy")]
-            Subcommands::Amend { .. } => {
+            Subcommands::Amend(..) => {
                 push_prop(&mut props, "sourceKind", "fileOrHunk");
-                push_prop(&mut props, "targetKind", "commit");
+                push_prop(&mut props, "targetKind", "commitOrBranch");
             }
             #[cfg(feature = "legacy")]
             Subcommands::Squash(..) => {
@@ -887,11 +887,10 @@ mod tests {
         #[cfg(feature = "legacy")]
         {
             assert_command(
-                Subcommands::Amend {
-                    target_or_source: "c1".into(),
-                    legacy_commit: None,
-                    changes: vec!["a1".into()],
-                },
+                Subcommands::Amend(crate::args::amend::Platform {
+                    target: CliIdArg("c1".into()),
+                    sources: vec![CliIdArg("a1".into())],
+                }),
                 "amend",
             );
         }

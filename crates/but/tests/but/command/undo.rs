@@ -6,7 +6,6 @@ use crate::{
 mod undo_commit;
 mod undo_move;
 mod undo_redo;
-mod undo_rub;
 mod undo_squash;
 mod undo_uncommit;
 
@@ -94,7 +93,7 @@ fn can_undo_discard() {
             .arg(path)
             .assert()
             .success()
-            .stdout_eq("Successfully discarded changes to 1 item\n")
+            .stdout_eq("Discarded uncommitted changes from new-file.txt\n")
             .stderr_eq("");
     });
 }

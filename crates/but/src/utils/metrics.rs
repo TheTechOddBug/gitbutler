@@ -111,8 +111,6 @@ impl Subcommands {
             #[cfg(feature = "legacy")]
             Subcommands::Tui { .. } => Tui,
             #[cfg(feature = "legacy")]
-            Subcommands::Rub { .. } => Rub,
-            #[cfg(feature = "legacy")]
             Subcommands::Diff { .. } => Diff,
             #[cfg(feature = "legacy")]
             Subcommands::_Diff2(..) => Diff2,
@@ -166,7 +164,7 @@ impl Subcommands {
             #[cfg(feature = "legacy")]
             Subcommands::Absorb { .. } => Absorb,
             #[cfg(feature = "legacy")]
-            Subcommands::Discard { .. } => Discard,
+            Subcommands::Discard(..) => Discard,
             #[cfg(feature = "legacy")]
             Subcommands::Pr(forge::pr::Platform { cmd, .. }) => match cmd {
                 None | Some(forge::pr::Subcommands::New { .. }) => PrNew,
@@ -220,7 +218,7 @@ impl Subcommands {
             #[cfg(feature = "legacy")]
             Subcommands::Uncommit { .. } => Uncommit,
             #[cfg(feature = "legacy")]
-            Subcommands::Amend { .. } => Amend,
+            Subcommands::Amend(..) => Amend,
             #[cfg(feature = "legacy")]
             Subcommands::Squash(..) => Squash,
             #[cfg(feature = "legacy")]
@@ -256,18 +254,13 @@ impl Subcommands {
         let mut props = Vec::new();
         match self {
             #[cfg(feature = "legacy")]
-            Subcommands::Uncommit { discard, diff, .. } => {
-                push_prop(&mut props, "uncommitDiscard", *discard);
-                push_prop(&mut props, "uncommitDiff", *diff);
+            Subcommands::Uncommit(..) => {
                 push_prop(&mut props, "sourceKind", "commitOrCommittedFile");
-                if !*discard {
-                    push_prop(&mut props, "targetKind", "unassigned");
-                }
             }
             #[cfg(feature = "legacy")]
-            Subcommands::Amend { .. } => {
+            Subcommands::Amend(..) => {
                 push_prop(&mut props, "sourceKind", "fileOrHunk");
-                push_prop(&mut props, "targetKind", "commit");
+                push_prop(&mut props, "targetKind", "commitOrBranch");
             }
             #[cfg(feature = "legacy")]
             Subcommands::Squash(..) => {
@@ -477,7 +470,7 @@ fn external_subcommand_metric_value(command_name: &std::ffi::OsStr) -> String {
 fn captures_detailed_error_message(command: CommandName) -> bool {
     matches!(
         command,
-        CommandName::Rub | CommandName::Uncommit | CommandName::Amend | CommandName::Squash
+        CommandName::Uncommit | CommandName::Amend | CommandName::Squash
     )
 }
 
@@ -892,11 +885,10 @@ mod tests {
         #[cfg(feature = "legacy")]
         {
             assert_command(
-                Subcommands::Amend {
-                    target_or_source: "c1".into(),
-                    legacy_commit: None,
-                    changes: vec!["a1".into()],
-                },
+                Subcommands::Amend(crate::args::amend::Platform {
+                    target: CliIdArg("c1".into()),
+                    sources: vec![CliIdArg("a1".into())],
+                }),
                 "amend",
             );
         }
@@ -921,34 +913,6 @@ mod tests {
             assert_eq!(
                 prop(&props, "targetKind"),
                 Some(&serde_json::json!("commitOrBranchOrUnassigned"))
-            );
-
-            let discard = Subcommands::Uncommit {
-                source: "c1".into(),
-                discard: true,
-                diff: false,
-            };
-            let props = discard.to_metrics_extra_props();
-            assert_eq!(
-                prop(&props, "sourceKind"),
-                Some(&serde_json::json!("commitOrCommittedFile"))
-            );
-            assert_eq!(
-                prop(&props, "uncommitDiff"),
-                Some(&serde_json::json!(false))
-            );
-            assert_eq!(prop(&props, "targetKind"), None);
-
-            let with_diff = Subcommands::Uncommit {
-                source: "c1".into(),
-                discard: false,
-                diff: true,
-            };
-            let props = with_diff.to_metrics_extra_props();
-            assert_eq!(prop(&props, "uncommitDiff"), Some(&serde_json::json!(true)));
-            assert_eq!(
-                prop(&props, "targetKind"),
-                Some(&serde_json::json!("unassigned"))
             );
         }
     }

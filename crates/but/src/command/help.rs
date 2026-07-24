@@ -149,8 +149,6 @@ fn print_grouped_with_truncation(
                 SubcommandDiscriminant::Pr => Group::ServerInteractions,
 
                 #[cfg(feature = "legacy")]
-                SubcommandDiscriminant::Rub => Group::EditingCommits,
-                #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Absorb => Group::EditingCommits,
                 #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Reword => Group::EditingCommits,
@@ -377,7 +375,7 @@ Inspection:
 Branching and Committing:
   commit       Create a commit
   branch       Commands for managing branches
-  discard      Discard uncommitted changes from the worktree
+  discard      Discard branches, commits, or changes
   resolve      Resolve conflicts in a commit
   unapply      Unapply a branch from the workspace
   apply        Apply a branch to the workspace
@@ -387,11 +385,10 @@ Branching and Committing:
 Editing Commits:
   squash       Squash commits, branches, or changes
   move         Move commits and changes around
-  rub          Combines two entities together to perform an operation like ame…
   absorb       Amends changes into the appropriate commits where they belong
   reword       Edit the commit message of the specified commit
-  uncommit     Uncommit changes from a commit or file-in-commit to the unstage…
-  amend        Amend one or more file changes into a specific commit and rebas…
+  uncommit     Uncommit changes from commits or committed files to the uncommi…
+  amend        Amend uncommitted changes into a commit or branch
 
 Operation History:
   oplog        Commands for viewing and managing operation history

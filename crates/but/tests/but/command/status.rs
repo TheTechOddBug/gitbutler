@@ -1156,7 +1156,7 @@ fn agent_status_explains_rewritten_commit_marker() {
 
     env.file("one.txt", "one amended\n");
     let target_commit = env.invoke_git("rev-parse --short refs/heads/A");
-    env.but(format!("amend {target_commit} --changes one.txt"))
+    env.but(format!("amend one.txt --target {target_commit}"))
         .assert()
         .success()
         .stderr_eq(snapbox::str![]);
@@ -1305,8 +1305,10 @@ Hint: run `but help` for all commands
 
 #[test]
 fn status_in_edit_mode_delegates_to_resolve_status() -> anyhow::Result<()> {
-    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
-    enter_edit_mode_with_conflicted_commit(&env)?;
+    let env = enter_edit_mode_with_conflicted_commit()?;
+
+    env.file("file.txt", "resolved content\n");
+    env.invoke_git("add file.txt");
 
     env.but("status")
         .with_color_for_svg()

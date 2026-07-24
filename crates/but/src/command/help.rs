@@ -149,8 +149,6 @@ fn print_grouped_with_truncation(
                 SubcommandDiscriminant::Pr => Group::ServerInteractions,
 
                 #[cfg(feature = "legacy")]
-                SubcommandDiscriminant::Rub => Group::EditingCommits,
-                #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Absorb => Group::EditingCommits,
                 #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Reword => Group::EditingCommits,
@@ -387,7 +385,6 @@ Branching and Committing:
 Editing Commits:
   squash       Squash commits, branches, or changes
   move         Move commits and changes around
-  rub          Combines two entities together to perform an operation like ame…
   absorb       Amends changes into the appropriate commits where they belong
   reword       Edit the commit message of the specified commit
   uncommit     Uncommit changes from commits or committed files to the uncommi…

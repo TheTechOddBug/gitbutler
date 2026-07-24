@@ -111,8 +111,6 @@ impl Subcommands {
             #[cfg(feature = "legacy")]
             Subcommands::Tui { .. } => Tui,
             #[cfg(feature = "legacy")]
-            Subcommands::Rub { .. } => Rub,
-            #[cfg(feature = "legacy")]
             Subcommands::Diff { .. } => Diff,
             #[cfg(feature = "legacy")]
             Subcommands::_Diff2(..) => Diff2,
@@ -472,7 +470,7 @@ fn external_subcommand_metric_value(command_name: &std::ffi::OsStr) -> String {
 fn captures_detailed_error_message(command: CommandName) -> bool {
     matches!(
         command,
-        CommandName::Rub | CommandName::Uncommit | CommandName::Amend | CommandName::Squash
+        CommandName::Uncommit | CommandName::Amend | CommandName::Squash
     )
 }
 

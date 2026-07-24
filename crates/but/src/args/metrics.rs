@@ -9,7 +9,6 @@ pub enum CommandName {
     Status,
     Tui,
     Stf,
-    Rub,
     Uncommit,
     Amend,
     Squash,

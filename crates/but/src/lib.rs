@@ -952,32 +952,6 @@ async fn match_subcommand(
             .map_err(CliError::from)
         }
         #[cfg(feature = "legacy")]
-        Subcommands::Rub { source, target } => {
-            use but_workspace::commit::squash_commits::MessageCombinationStrategy;
-
-            let status_after = args.status_after;
-            let mut ctx = setup::init_ctx(
-                &args,
-                InitCtxOptions {
-                    background_sync: BackgroundSync::Enabled { silent: false },
-                    ..Default::default()
-                },
-                out,
-            )?;
-            out.begin_status_after(status_after);
-            let result = command::legacy::rub::handle(
-                &mut ctx,
-                out,
-                &source,
-                &target,
-                MessageCombinationStrategy::KeepBoth,
-            )
-            .context("Rubbed the wrong way.")
-            .emit_metrics(metrics_ctx);
-            run_status_after_if_ok(status_after, &result, &mut ctx, out);
-            result.show_root_cause_error_then_exit_without_destructors(output)
-        }
-        #[cfg(feature = "legacy")]
         Subcommands::Diff {
             target,
             tui,

@@ -1305,8 +1305,10 @@ Hint: run `but help` for all commands
 
 #[test]
 fn status_in_edit_mode_delegates_to_resolve_status() -> anyhow::Result<()> {
-    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
-    enter_edit_mode_with_conflicted_commit(&env)?;
+    let env = enter_edit_mode_with_conflicted_commit()?;
+
+    env.file("file.txt", "resolved content\n");
+    env.invoke_git("add file.txt");
 
     env.but("status")
         .with_color_for_svg()

@@ -651,7 +651,7 @@ impl<'a, T> MaybeBorrowedNonEmpty<'a, T> {
             MaybeBorrowedNonEmpty::Owned(inner) => MaybeBorrowedNonEmpty::Owned(inner),
             MaybeBorrowedNonEmpty::Borrowed(inner) => {
                 MaybeBorrowedNonEmpty::Owned(inner.map(|item| item.clone()))
-            },
+            }
         }
     }
 }

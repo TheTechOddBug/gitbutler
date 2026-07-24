@@ -47,8 +47,6 @@ mod resolve;
 #[cfg(feature = "legacy")]
 mod reword;
 #[cfg(feature = "legacy")]
-mod rub;
-#[cfg(feature = "legacy")]
 mod setup;
 mod skill;
 #[cfg(feature = "legacy")]
@@ -210,37 +208,21 @@ mod util {
             .context("expected branch in status output")
     }
 
-    /// Create a conflicted edit-mode session by reordering commits and entering `resolve`.
-    pub fn enter_edit_mode_with_conflicted_commit(env: &Sandbox) -> anyhow::Result<()> {
-        env.but("branch new branchB").assert().success();
+    /// Create a sandbox where pulling the target materializes a conflicted commit on branch A.
+    pub fn sandbox_with_conflicted_commit() -> Sandbox {
+        let env = Sandbox::init_scenario_with_target_and_default_settings("upstream-conflicted");
+        env.setup_metadata_at_target(&["A"], "refs/heads/base");
+        env.invoke_git("remote set-url origin .");
+        env.but("pull").assert().success();
+        env
+    }
 
-        env.file("test-file.txt", "line 1\nline 2\nline 3\n");
-        env.but("commit -m 'first commit' -b branchB")
-            .assert()
-            .success();
-
-        env.file("test-file.txt", "line 1\nline 2\nline 3\nline 4\n");
-        env.but("commit -m 'second commit' -b branchB")
-            .assert()
-            .success();
-
-        let status_before = status_json(env)?;
-        let branch_before = find_branch(&status_before, "branchB")?;
-        let first_commit_cli_id = branch_before["commits"]
-            .as_array()
-            .context("branch commits should be an array")?
-            .iter()
-            .find(|commit| commit["message"].as_str() == Some("first commit"))
-            .and_then(|commit| commit["cliId"].as_str())
-            .context("should find first commit cli id")?;
-
-        env.but(format!("rub {first_commit_cli_id} zz"))
-            .assert()
-            .success();
-
-        let status_after = status_json(env)?;
-        let branch_after = find_branch(&status_after, "branchB")?;
-        let conflicted_commit_cli_id = branch_after["commits"]
+    /// Create a conflicted edit-mode session by integrating upstream and entering `resolve`.
+    pub fn enter_edit_mode_with_conflicted_commit() -> anyhow::Result<Sandbox> {
+        let env = sandbox_with_conflicted_commit();
+        let status = status_json(&env)?;
+        let branch = find_branch(&status, "A")?;
+        let conflicted_commit_cli_id = branch["commits"]
             .as_array()
             .context("branch commits should be an array")?
             .iter()
@@ -248,10 +230,11 @@ mod util {
             .and_then(|commit| commit["cliId"].as_str())
             .context("should find conflicted commit cli id")?;
 
+        env.file("uncommitted.txt", "uncommitted work\n");
         env.but(format!("resolve {conflicted_commit_cli_id}"))
             .assert()
             .success();
-        Ok(())
+        Ok(env)
     }
 
     /// Whether `file_path` currently appears among the uncommitted changes.

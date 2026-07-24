@@ -27,7 +27,6 @@ pub mod refresh;
 pub mod resolve;
 pub mod reword;
 pub mod reword2;
-pub mod rub;
 pub mod setup;
 pub mod show;
 pub mod squash;

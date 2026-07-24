@@ -33,6 +33,7 @@ pub mod squash;
 pub mod status;
 pub mod teardown;
 pub mod unapply;
+pub mod uncommit;
 pub(crate) mod upstream;
 pub(crate) mod workspace_target;
 pub mod worktree;

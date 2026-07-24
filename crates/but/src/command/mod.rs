@@ -5,7 +5,6 @@ pub mod legacy;
 pub mod agent;
 pub mod alias;
 pub mod branch;
-pub mod commit;
 pub mod completions;
 pub mod config;
 pub mod expand;

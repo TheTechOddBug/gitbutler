@@ -253,4 +253,13 @@ mod util {
             .success();
         Ok(())
     }
+
+    /// Whether `file_path` currently appears among the uncommitted changes.
+    pub fn uncommitted_contains_file(status: &serde_json::Value, file_path: &str) -> bool {
+        status["uncommittedChanges"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|change| change["filePath"].as_str().unwrap() == file_path)
+    }
 }

@@ -646,23 +646,9 @@ pub enum Subcommands {
         no_diff: bool,
     },
 
-    /// Uncommit changes from a commit or file-in-commit to the unstaged area.
-    ///
-    /// Use `--discard` to remove the selected committed changes entirely instead.
-    ///
-    /// Wrapper for `but rub <source> zz`.
     #[cfg(feature = "legacy")]
     #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
-    Uncommit {
-        /// Commit ID or file-in-commit ID to uncommit
-        source: String,
-        /// Discard the selected committed changes instead of moving them to uncommitted
-        #[clap(long, short = 'd')]
-        discard: bool,
-        /// Show the resulting uncommitted diff after uncommitting.
-        #[clap(long, conflicts_with = "discard")]
-        diff: bool,
-    },
+    Uncommit(uncommit::Platform),
 
     /// Amend one or more file changes into a specific commit and rebases any dependent commits.
     ///
@@ -1297,6 +1283,8 @@ pub mod r#move;
 pub mod skill;
 #[cfg(feature = "legacy")]
 pub mod squash;
+#[cfg(feature = "legacy")]
+pub mod uncommit;
 pub mod update;
 
 pub mod actions {

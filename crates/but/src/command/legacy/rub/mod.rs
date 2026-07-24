@@ -1,10 +1,7 @@
-use std::collections::HashMap;
-
 use anyhow::bail;
 use bstr::BStr;
 use but_api::commit::types::{
-    CommitCreateResult, CommitMoveResult, CommitSquashResult, MoveChangesResult,
-    UncommitChangesSource, UncommitResult,
+    CommitCreateResult, CommitMoveResult, CommitSquashResult, MoveChangesResult, UncommitResult,
 };
 use but_core::{DiffSpec, DryRun, sync::RepoExclusive};
 use but_ctx::Context;
@@ -27,7 +24,7 @@ use crate::{
         },
     },
     theme::{self, Paint},
-    utils::{OutputChannel, diff_specs::DiffSpecBuilder, shorten_object_id},
+    utils::{OutputChannel, diff_specs::DiffSpecBuilder},
 };
 
 mod amend;
@@ -740,206 +737,6 @@ fn resolve_single_id(
 
     // Multiple matches - use disambiguation
     prompt_for_disambiguation(entity_str, matches, context, out)
-}
-
-/// Handler for `but uncommit <source>` - runs `but rub <source> zz`
-/// Validates that source is a commit or file-in-commit.
-pub(crate) fn handle_uncommit(
-    ctx: &mut Context,
-    out: &mut OutputChannel,
-    source_str: &str,
-    discard: bool,
-) -> anyhow::Result<()> {
-    let t = theme::get();
-    let id_map = IdMap::legacy_new_from_context(ctx, None)?;
-    let sources = parse_sources_with_disambiguation(ctx, &id_map, source_str, out)?;
-
-    // Validate that all sources are commits or committed files
-    for source in &sources {
-        match source {
-            CliId::Commit { .. } | CliId::CommittedFile { .. } => {
-                // Valid types for uncommit
-            }
-            _ => {
-                bail!(
-                    "Cannot uncommit {} - it is {}. Only commits and files-in-commits can be uncommitted.",
-                    t.cli_id.paint(source_str),
-                    t.attention.paint(source.kind_for_humans())
-                );
-            }
-        }
-    }
-
-    if discard {
-        let json_mode = out.for_json().is_some();
-
-        for source in sources {
-            match source {
-                CliId::Commit(CommitId { commit_id, .. }) => {
-                    but_api::commit::discard_commit::commit_discard(ctx, commit_id, DryRun::No)?;
-
-                    if !json_mode && let Some(out) = out.for_human() {
-                        writeln!(
-                            out,
-                            "Discarded {}",
-                            theme::Commit(
-                                commit_id,
-                                id_map
-                                    .change_id_ref(commit_id)
-                                    .map(|change_id| change_id.change_id.clone()),
-                            )
-                        )?;
-                    }
-                }
-                CliId::CommittedFile(CommittedFileId {
-                    path, commit_id, ..
-                }) => {
-                    crate::command::commit::file::uncommit_file_and_discard(
-                        ctx,
-                        path.as_ref(),
-                        commit_id,
-                        out,
-                        !json_mode,
-                    )?;
-                }
-                _ => {
-                    unreachable!("uncommit sources were validated before execution");
-                }
-            }
-        }
-
-        if json_mode && let Some(out) = out.for_json() {
-            out.write_value(serde_json::json!({"ok": true}))?;
-        }
-
-        return Ok(());
-    }
-
-    // When every source is a committed file, uncommit them in a single batched
-    // operation. This lets the backend group the changes by commit and apply them
-    // in child-to-parent order, so callers can pass files from several commits
-    // (and in any order) without hitting stale commit IDs from intermediate
-    // rebases. Whole-commit sources keep the sequential `rub <source> zz` path.
-    if sources
-        .iter()
-        .all(|source| matches!(source, CliId::CommittedFile { .. }))
-    {
-        return uncommit_committed_files(ctx, &id_map, out, &sources);
-    }
-
-    // Call the main rub handler with "zz" as target
-    handle(
-        ctx,
-        out,
-        source_str,
-        "zz",
-        MessageCombinationStrategy::KeepBoth,
-    )
-}
-
-/// Uncommit one or more committed files as a single multi-source operation.
-///
-/// Committed-file ids are grouped by commit so each source commit yields a
-/// single [`UncommitChangesSource`] with all of its changes combined. This
-/// computes the diff specs for a commit in one pass and keeps the payload to one
-/// entry per commit; the backend then applies them child-to-parent in one editor
-/// session. Sources that could not be applied are reported best-effort without
-/// failing the whole operation.
-fn uncommit_committed_files(
-    ctx: &mut Context,
-    id_map: &IdMap,
-    out: &mut OutputChannel,
-    sources: &[CliId],
-) -> anyhow::Result<()> {
-    // Group the requested paths by commit, preserving first-seen commit order.
-    let mut commit_order = Vec::new();
-    let mut paths_by_commit: HashMap<gix::ObjectId, Vec<&BStr>> = HashMap::new();
-    for source in sources {
-        let CliId::CommittedFile(CommittedFileId {
-            commit_id, path, ..
-        }) = source
-        else {
-            unreachable!("uncommit_committed_files only handles committed files");
-        };
-        match paths_by_commit.get_mut(commit_id) {
-            Some(paths) => paths.push(path.as_ref()),
-            None => {
-                commit_order.push(*commit_id);
-                paths_by_commit.insert(*commit_id, vec![path.as_ref()]);
-            }
-        }
-    }
-
-    // One source per commit, with the changes for all of its paths combined.
-    let mut uncommit_sources = Vec::with_capacity(commit_order.len());
-    for commit_id in commit_order {
-        let paths = paths_by_commit
-            .remove(&commit_id)
-            .expect("commit id was just inserted");
-        uncommit_sources.push(UncommitChangesSource {
-            commit_id,
-            changes: file_changes_from_commit_paths(ctx, commit_id, &paths)?,
-        });
-    }
-
-    // One source per commit, so this is the number of commits we attempted.
-    let source_count = uncommit_sources.len();
-    let result = but_api::commit::uncommit::commit_uncommit_changes_from_commits(
-        ctx,
-        uncommit_sources,
-        None,
-        DryRun::No,
-    )?;
-
-    // The multi-source API is best-effort and returns `Ok` even when sources
-    // fail. If every commit failed, nothing was uncommitted, so fail the command
-    // (matching the old single-source behavior) rather than reporting success.
-    if result.failures.len() == source_count {
-        let repo = ctx.repo.get()?;
-        let details = result
-            .failures
-            .iter()
-            .map(|failure| {
-                format!(
-                    "{}: {}",
-                    id_map
-                        .change_id_ref(failure.commit_id)
-                        .map(|change_id| change_id.padded_short_id())
-                        .unwrap_or_else(|| shorten_object_id(&repo, failure.commit_id)),
-                    failure.error
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        bail!("Failed to uncommit changes:\n{details}");
-    }
-
-    // Partial success: warn about the sources that could not be applied.
-    if !result.failures.is_empty()
-        && let Some(out) = out.for_human()
-    {
-        for failure in &result.failures {
-            writeln!(
-                out,
-                "Warning: could not uncommit changes from {}: {}",
-                theme::Commit(
-                    failure.commit_id,
-                    id_map
-                        .change_id_ref(failure.commit_id)
-                        .map(|change_id| change_id.change_id.clone()),
-                ),
-                failure.error
-            )?;
-        }
-    }
-
-    if let Some(out) = out.for_human() {
-        writeln!(out, "Uncommitted changes")?;
-    } else if let Some(out) = out.for_json() {
-        out.write_value(serde_json::json!({"ok": true}))?;
-    }
-
-    Ok(())
 }
 
 /// Handler for `but amend <file>... <commit>` - runs `but rub <file> <commit>`

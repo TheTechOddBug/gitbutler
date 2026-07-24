@@ -1445,11 +1445,9 @@ async fn match_subcommand(
                 .show_root_cause_error_then_exit_without_destructors(output)
         }
         #[cfg(feature = "legacy")]
-        Subcommands::Uncommit {
-            source,
-            discard,
-            diff,
-        } => {
+        Subcommands::Uncommit(uncommit_args) => {
+            use crate::utils::IntermediateChannel;
+
             let status_after = args.status_after;
             let mut ctx = setup::init_ctx(
                 &args,
@@ -1459,63 +1457,17 @@ async fn match_subcommand(
                 },
                 out,
             )?;
-            let capture_diff_json = diff && out.is_json();
-            out.begin_status_after(status_after || capture_diff_json);
-            let mut result = command::legacy::rub::handle_uncommit(&mut ctx, out, &source, discard)
-                .context("Failed to uncommit.");
-            if diff && result.is_ok() {
-                let diff_result = if capture_diff_json {
-                    (|| {
-                        let mut mutation_json =
-                            out.take_json_buffer().unwrap_or(serde_json::Value::Null);
-                        out.start_json_buffering();
-                        if let Err(err) = command::legacy::diff::handle(&mut ctx, out, None)
-                            .context("Failed to show diff after uncommit.")
-                        {
-                            let diff_error = format!("{err:#}");
-                            if let Some(object) = mutation_json.as_object_mut() {
-                                object.insert(
-                                    "diff_error".to_string(),
-                                    serde_json::Value::String(diff_error),
-                                );
-                            } else {
-                                mutation_json = serde_json::json!({
-                                    "result": mutation_json,
-                                    "diff_error": diff_error,
-                                });
-                            }
-                            out.write_value(mutation_json)
-                                .context("Failed to write uncommit output after diff failure.")?;
-                            return Err(err);
-                        }
-                        let diff_json = out.take_json_buffer().unwrap_or(serde_json::Value::Null);
+            out.begin_status_after(status_after);
 
-                        if let Some(object) = mutation_json.as_object_mut() {
-                            object.insert("diff".to_string(), diff_json);
-                        } else {
-                            mutation_json = serde_json::json!({
-                                "result": mutation_json,
-                                "diff": diff_json,
-                            });
-                        }
-
-                        if status_after {
-                            out.start_json_buffering();
-                        }
-                        out.write_value(mutation_json)
-                            .context("Failed to write diff output after uncommit.")
-                    })()
-                } else {
-                    command::legacy::diff::handle(&mut ctx, out, None)
-                        .context("Failed to show diff after uncommit.")
-                };
-                if let Err(err) = diff_result {
-                    result = Err(err);
-                }
-            }
-            let result = result.emit_metrics(metrics_ctx);
-            run_status_after_if_ok(status_after, &result, &mut ctx, out);
-            result.show_root_cause_error_then_exit_without_destructors(output)
+            let outcome = command::legacy::uncommit::uncommit(
+                &mut ctx,
+                IntermediateChannel::new(out),
+                uncommit_args,
+            )
+            .emit_metrics(metrics_ctx)?;
+            out.print_cli_output(outcome)?;
+            run_status_after_if_requested(status_after, &mut ctx, out);
+            Ok(())
         }
         #[cfg(feature = "legacy")]
         Subcommands::Amend {

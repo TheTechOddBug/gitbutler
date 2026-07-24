@@ -166,7 +166,7 @@ impl Subcommands {
             #[cfg(feature = "legacy")]
             Subcommands::Absorb { .. } => Absorb,
             #[cfg(feature = "legacy")]
-            Subcommands::Discard { .. } => Discard,
+            Subcommands::Discard(..) => Discard,
             #[cfg(feature = "legacy")]
             Subcommands::Pr(forge::pr::Platform { cmd, .. }) => match cmd {
                 None | Some(forge::pr::Subcommands::New { .. }) => PrNew,

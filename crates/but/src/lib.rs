@@ -1230,7 +1230,10 @@ async fn match_subcommand(
             result.map_err(CliError::from)
         }
         #[cfg(feature = "legacy")]
-        Subcommands::Discard { id } => {
+        Subcommands::Discard(discard_args) => {
+            use crate::utils::IntermediateChannel;
+
+            let status_after = args.status_after;
             let mut ctx = setup::init_ctx(
                 &args,
                 InitCtxOptions {
@@ -1239,9 +1242,17 @@ async fn match_subcommand(
                 },
                 out,
             )?;
-            command::legacy::discard::handle(&mut ctx, out, &id)
-                .emit_metrics(metrics_ctx)
-                .map_err(CliError::from)
+            out.begin_status_after(status_after);
+
+            let outcome = command::legacy::discard::discard(
+                &mut ctx,
+                IntermediateChannel::new(out),
+                discard_args,
+            )
+            .emit_metrics(metrics_ctx)?;
+            out.print_cli_output(outcome)?;
+            run_status_after_if_requested(status_after, &mut ctx, out);
+            Ok(())
         }
         #[cfg(feature = "legacy")]
         Subcommands::Setup { init } => {

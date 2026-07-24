@@ -377,7 +377,7 @@ Inspection:
 Branching and Committing:
   commit       Create a commit
   branch       Commands for managing branches
-  discard      Discard uncommitted changes from the worktree
+  discard      Discard branches, commits, or changes
   resolve      Resolve conflicts in a commit
   unapply      Unapply a branch from the workspace
   apply        Apply a branch to the workspace

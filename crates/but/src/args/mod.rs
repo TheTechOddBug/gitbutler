@@ -369,27 +369,9 @@ pub enum Subcommands {
         no_ff: bool,
     },
 
-    /// Discard uncommitted changes from the worktree.
-    ///
-    /// This command permanently discards changes to files, restoring them to their
-    /// state in the HEAD commit. Use this to undo unwanted modifications.
-    ///
-    /// The ID parameter should be a file ID as shown in `but status`. You can
-    /// discard a whole file or specific hunks within a file.
-    ///
-    /// ## Examples
-    ///
-    /// Discard all changes to a file:
-    ///
-    /// ```text
-    /// but discard a1
-    /// ```
     #[cfg(feature = "legacy")]
     #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
-    Discard {
-        /// The ID of the file or hunk to discard (as shown in `but status`)
-        id: String,
-    },
+    Discard(discard::Platform),
 
     /// Resolve conflicts in a commit.
     ///
@@ -1308,6 +1290,8 @@ pub mod commit;
 pub mod config;
 #[cfg(feature = "legacy")]
 pub mod diff2;
+#[cfg(feature = "legacy")]
+pub mod discard;
 #[cfg(feature = "legacy")]
 pub mod r#move;
 pub mod skill;

@@ -43,7 +43,7 @@ fn parse_scoped(
 /// turns everything else into a targeted error naming what the selector is.
 ///
 /// This is the single home of that policy — `but commit --changes`, amend,
-/// stage, unstage, and discard all resolve through it so they cannot diverge.
+/// stage, and unstage all resolve through it so they cannot diverge.
 pub(crate) fn resolve_uncommitted_part(
     ctx: &mut Context,
     id_map: &IdMap,
@@ -79,16 +79,6 @@ pub(crate) fn parse_sources(
     source: &str,
 ) -> anyhow::Result<Vec<CliId>> {
     parse_sources_scoped(ctx, id_map, source, SourceScope::Any)
-}
-
-/// Like [parse_sources], but selectors resolve only against uncommitted files
-/// and hunks. For commands whose sources must be uncommitted (e.g. discard).
-pub(crate) fn parse_uncommitted_sources(
-    ctx: &mut Context,
-    id_map: &IdMap,
-    source: &str,
-) -> anyhow::Result<Vec<CliId>> {
-    parse_sources_scoped(ctx, id_map, source, SourceScope::UncommittedOnly)
 }
 
 fn parse_sources_scoped(
